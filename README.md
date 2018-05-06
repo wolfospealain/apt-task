@@ -44,10 +44,12 @@ optional arguments:
 
 ### Remove task or metapackage:
 ```apt-task -r kubuntu-desktop```
+
 Effectively removing a metapackage or task may require removal of other overlapping metapackages or tasks first. Refer to the Apt-Task report or use the ```apt-task --show``` option for further metapackage or task information.
 
 ### Factory installation only:
 Remove all but required metapackages and tasks, then remove remaining packages outside any installed metapackages or tasks (danger awaits):
+
 ```apt-task --outsiders```
 
 ### Complete/fix installation:
