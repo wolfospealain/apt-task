@@ -312,7 +312,7 @@ class Apt:
             if packages == set():
                 return "# No " + task + " packages to safely remove."
             else:
-                return apt_command + " " + " ".join(packages)
+                return apt_command + " " + " ".join(sorted(packages))
 
     def installable(self, task):
         """
@@ -349,7 +349,7 @@ class Apt:
             if packages == set():
                 return "# No packages for " + task + " available."
             else:
-                return apt_command + " " + " ".join(packages)
+                return apt_command + " " + " ".join(sorted(packages))
 
     def report(self):
         """
@@ -444,7 +444,7 @@ def parse_command_line():
     if ".py" in sys.argv[0]:
         parser.add_argument("--setup", action="store_true", dest="setup",
                             help="install to Linux destination path (default: " + install_path + ")")
-    parser.add_argument("-V", "--version", action="version", version="%(prog)s " + version,
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
                             help="display version and exit")
     parser.add_argument("-i", "--install", action="store_true", dest="install",
                         help="install/complete installation of task and/or metapackage packages")
@@ -488,7 +488,7 @@ if __name__ == "__main__":
     elif args.remove:
         print(apt.remove(args.task) + "\n")
     elif args.outsiders:
-        print(apt.remove() + "\n")
+        print(apt.remove(None) + "\n")
     elif args.show:
         apt.show(args.task)
     elif args.list:
