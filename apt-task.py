@@ -13,7 +13,7 @@ install_path = "/usr/local/bin"
 
 class Package:
     """
-    Stores package data and depends.
+    Stores package data and fetch depends.
     """
 
     def __init__(self, name, sections=[], tasks=[], installed=False, metapackage=False, size=0):
