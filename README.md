@@ -13,11 +13,10 @@ Importantly, Apt-Task only generates the command text and will not make any chan
 ## Usage
 
 ```
-usage: apt-task.py [-h] [--setup] [-V] [-i] [-r] [-l] [--outsiders] [-s] [-a]
-                   [-R]
-                   [task] [path]
+usage: apt-task [-h] [--setup] [-V] [-i] [-r] [-l] [--outsiders] [-s] [-a] [-R]
+                [task] [path]
 
-apt-task.py version 1.0. Safely remove and install Ubuntu Linux task and/or
+apt-task version 1.0. Safely remove and install Ubuntu Linux task and/or
 metapackage packages.
 
 positional arguments:
