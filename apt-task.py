@@ -424,9 +424,9 @@ def install(target=install_path):
     """
     if os.path.isdir(target):
         try:
-            subprocess.check_output(["cp", "upping.py", target + "/upping"]).decode("utf-8")
-            subprocess.check_output(["chmod", "a+x", target + "/upping"]).decode("utf-8")
-            print("Installed to " + target + " as upping.")
+            subprocess.check_output(["cp", "apt-task.py", target + "/apt-task"]).decode("utf-8")
+            subprocess.check_output(["chmod", "a+x", target + "/apt-task"]).decode("utf-8")
+            print("Installed to " + target + " as apt-task.")
         except:
             print("Not installed.")
             if os.getuid() != 0:
@@ -444,6 +444,8 @@ def parse_command_line():
     if ".py" in sys.argv[0]:
         parser.add_argument("--setup", action="store_true", dest="setup",
                             help="install to Linux destination path (default: " + install_path + ")")
+        parser.add_argument("path", nargs="?", action="store", type=str, default=install_path,
+                            help="optional destination for --setup option (default: " + install_path + ")")
     parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
                             help="display version and exit")
     parser.add_argument("-i", "--install", action="store_true", dest="install",
@@ -462,8 +464,6 @@ def parse_command_line():
                         help="default: report on installed tasks and metapackages")
     parser.add_argument("task", nargs="?", action="store", type=str,
                         help="task or metapackage")
-    parser.add_argument("path", nargs="?", action="store", type=str,
-                        help="optional destination for --setup option (default: " + install_path + ")")
     args = parser.parse_args()
     return args
 
@@ -492,10 +492,10 @@ if __name__ == "__main__":
     elif args.show:
         apt.show(args.task)
     elif args.list:
-        print("Installed Tasks: ", " ".join(apt.installed_tasks), "\n")
-        print("Installed Metapackages: ", " ".join(apt.installed_tasks))
+        print("tasks installed:", " ".join(apt.installed_tasks))
+        print("metapackages installed:", " ".join(apt.installed_tasks), "\n")
     elif args.available:
-        print("Available Tasks: ", " ".join(apt.tasks), "\n")
-        print("Available Metapackages: ", " ".join(apt.metapackages))
+        print("tasks available: ", " ".join(apt.tasks))
+        print("metapackages available: ", " ".join(apt.metapackages), "\n")
     else:
         apt.report()
