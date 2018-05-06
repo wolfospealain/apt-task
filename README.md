@@ -27,7 +27,7 @@ positional arguments:
 optional arguments:
   -h, --help       show this help message and exit
   --setup          install to Linux destination path (default: /usr/local/bin)
-  -V, --version    display version and exit
+  -v, --version    display version and exit
   -i, --install    install/complete installation of task and/or metapackage
                    packages
   -r, --remove     safely remove task and/or metapackage packages
