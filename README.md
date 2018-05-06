@@ -20,8 +20,8 @@ apt-task version 1.0. Safely remove and install Ubuntu Linux task and/or
 metapackage packages.
 
 positional arguments:
-  task             Task or metapackage
-  path             Optional destination for --setup option (default:
+  task             task or metapackage
+  path             optional destination for --setup option (default:
                    /usr/local/bin)
 
 optional arguments:
