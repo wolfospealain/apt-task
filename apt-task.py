@@ -66,7 +66,7 @@ class Apt:
         self.metapackages = self._metapackages()
         self.installed_metapackages = self._metapackages(installed_only=True)
         self.installed_metapackages_db = {}
-        for metapackage in self.installed_metapackages:
+        for metapackage in self.metapackages:
             self.installed_metapackages_db[metapackage] = Task(metapackage, self._metapackage_packages(metapackage), self._metapackage_packages(metapackage, installed_only=True))
         self.tasks = self._tasks()
         self.tasks_db = {}
