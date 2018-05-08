@@ -268,8 +268,6 @@ class Apt:
                 if other_metapackage not in overlaps:
                     overlaps[other_metapackage] = set()
                 overlaps[other_metapackage].update(set(self.installed_metapackages_db[other_metapackage].installed) & packages)
-                if metapackage in self.installed_metapackages:
-                    overlaps[other_metapackage].update([metapackage])
         return overlaps
 
     def installed_packages(self, task):
