@@ -370,13 +370,13 @@ class Apt:
                     skip.update([metapackage])
                 else:
                     metapackage = task
-                if task in self.installed_tasks:
+                if task in self.asks:
                     print((str(round(self.task_status(task)[1]-.05,1)) + "%").rjust(6), sep="", end="")
                     installed_size += self.size(set(self.tasks_db[task].installed))
                     installed_packages += len(set(self.tasks_db[task].installed))
                 else:
                     print("   -  ", end="")
-                if metapackage in self.installed_metapackages:
+                if metapackage in self.metapackages:
                     print(" | ", (str(round(self.metapackage_status(metapackage)[1]-.05,1)) + "%").rjust(6), sep="", end="")
                     installed_size += self.size(set(self.installed_metapackages_db[metapackage].installed))
                     installed_packages += len(set(self.installed_metapackages_db[metapackage].installed)) + 1
