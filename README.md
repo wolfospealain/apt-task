@@ -14,15 +14,13 @@ Importantly, Apt-Task only generates the command text and will not make any chan
 
 ```
 usage: apt-task [-h] [--setup] [-V] [-i] [-r] [-l] [--outsiders] [-s] [-a] [-R]
-                [task] [path]
+                [task]
 
 apt-task version 1.0. Safely remove and install Ubuntu Linux task and/or
 metapackage packages.
 
 positional arguments:
   task             task or metapackage
-  path             optional destination for --setup option (default:
-                   /usr/local/bin)
 
 optional arguments:
   -h, --help       show this help message and exit
