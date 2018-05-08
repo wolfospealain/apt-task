@@ -235,7 +235,7 @@ class Apt:
         metapackage = self.equivalent_metapackage(task)
         installed_packages = self.installed_packages(task)
 
-        if metapackage in self.metapackages and task in self.tasks:
+        if metapackage in self.installed_metapackages and task in self.installed_tasks:
             metapackage_packages = self.task_status(task)[2]
             task_packages = self.metapackage_status(metapackage)[2]
             common_packages = sorted(set(installed_packages) - (set(task_packages) | set(metapackage_packages)))
@@ -243,7 +243,8 @@ class Apt:
             print(metapackage, "metapackage installed:", " ".join(metapackage_packages), "\n")
             print("common installed:", " ".join(common_packages), "\n")
         else:
-            print(task, "installed: ", " ".join(installed_packages), "\n")
+            print(task, "installed:", " ".join(installed_packages), "\n")
+        print("removable:", " ".join(self.removable(task)), "\n")
         print("available:", " ".join(self.installable(task)), "\n")
         overlaps = self.overlapping(task)
         print("overlapping:\n")
@@ -267,7 +268,8 @@ class Apt:
                 if other_metapackage not in overlaps:
                     overlaps[other_metapackage] = set()
                 overlaps[other_metapackage].update(set(self.installed_metapackages_db[other_metapackage].installed) & packages)
-                overlaps[other_metapackage].update([metapackage])
+                if metapackage in self.installed_metapackages:
+                    overlaps[other_metapackage].update([metapackage])
         return overlaps
 
     def installed_packages(self, task):
@@ -275,13 +277,13 @@ class Apt:
         Return a list of installed packages for task and/or metapackage.
         """
         installed = set()
-        if task in self.installed_tasks:
+        if task in self.tasks:
             installed.update(set(self.tasks_db[task].installed))
-        if self._prefix+task in self.installed_metapackages:
-            task = self._prefix+task
-        if task in self.installed_metapackages:
-            installed.update(set(self.installed_metapackages_db[task].installed))
-            installed.update([task])
+        metapackage = self.equivalent_metapackage(task)
+        if metapackage in self.metapackages:
+            installed.update(set(self.installed_metapackages_db[metapackage].installed))
+            if metapackage in self.installed_metapackages:
+                installed.update([metapackage])
         return sorted(installed)
 
     def removable(self, task):
@@ -290,23 +292,23 @@ class Apt:
         """
         if not task:
             return sorted(set(self.outside_packages()))
-        elif task in self.installed_tasks or task in self.installed_metapackages \
-                or self._prefix in self.installed_metapackages():
+        else:
             packages = set(self.installed_packages(task))
             overlaps = self.overlapping(task)
             for other_task in overlaps:
                 packages -= overlaps[other_task]
             return sorted(packages)
-        else:
-            return
 
     def remove(self, task):
         """
         Return apt remove command text.
         """
         apt_command = "sudo apt remove"
+        comment = ""
         if task and task not in self.installed_tasks and task not in self.installed_metapackages:
-            return "# " + task + " is not installed."
+            comment = "# Note: " + task + " is not installed."
+        if task and task not in self.tasks and task not in self.metapackages:
+            return "# " + task + " is not available."
         else:
             packages = set(self.removable(task))
             if packages == set():
@@ -357,7 +359,7 @@ class Apt:
         """
         combined = set(self.installed_tasks) | set(self.installed_metapackages)
         skip = set()
-        print(" task  |  meta   name packages (% overlap) unique/installed")
+        print(" task  |  meta   name packages (% overlap) removable/installed")
         print("       |  ")
         total_size = 0
         total_packages = 0
@@ -379,7 +381,7 @@ class Apt:
                 if metapackage in self.installed_metapackages:
                     print(" | ", (str(round(self.metapackage_status(metapackage)[1]-.05,1)) + "%").rjust(6), sep="", end="")
                     installed_size += self.size(set(self.installed_metapackages_db[metapackage].installed))
-                    installed_packages += len(set(self.installed_metapackages_db[metapackage].installed))
+                    installed_packages += len(set(self.installed_metapackages_db[metapackage].installed)) + 1
                 else:
                     print(" |    -  ", sep="", end="")
                 if task != metapackage:
@@ -441,11 +443,6 @@ def parse_command_line():
     description = "%(prog)s version " + version + ". " \
                   + "Safely remove and install Ubuntu Linux task and/or metapackage packages."
     parser = argparse.ArgumentParser(description=description, epilog="")
-    if ".py" in sys.argv[0]:
-        parser.add_argument("--setup", action="store_true", dest="setup",
-                            help="install to Linux destination path (default: " + install_path + ")")
-        parser.add_argument("path", nargs="?", action="store", type=str, default=install_path,
-                            help="optional destination for --setup option (default: " + install_path + ")")
     parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
                             help="display version and exit")
     parser.add_argument("-i", "--install", action="store_true", dest="install",
@@ -464,6 +461,9 @@ def parse_command_line():
                         help="default: report on installed tasks and metapackages")
     parser.add_argument("task", nargs="?", action="store", type=str,
                         help="task or metapackage")
+    if ".py" in sys.argv[0]:
+        parser.add_argument("--setup", action="store_true", dest="setup",
+                            help="install to Linux destination path (default: " + install_path + ")")
     args = parser.parse_args()
     return args
 
@@ -472,9 +472,10 @@ if __name__ == "__main__":
     args = parse_command_line()
     if ".py" in sys.argv[0]:
         if args.setup:
-            install(args.path)
+            install(args.task)
             exit(0)
     if (args.install or args.remove or args.show) and not args.task:
+        print(args.__dict__)
         print("\nMissing task parameter.\n")
         exit(2)
     print("\nParsing apt-cache ... ", end="")
