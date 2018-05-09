@@ -470,26 +470,26 @@ def parse_command_line():
     description = "%(prog)s version " + version + ". " \
                   + "Safely remove and install Ubuntu Linux task and/or metapackage packages."
     parser = argparse.ArgumentParser(description=description, epilog="")
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
-                            help="display version and exit")
     parser.add_argument("-i", "--install", action="store_true", dest="install",
                         help="install/complete installation of task and/or metapackage packages")
     parser.add_argument("-r", "--remove", action="store_true", dest="remove",
                         help="safely remove task and/or metapackage packages")
-    parser.add_argument("-l", "--list", action="store_true", dest="list",
-                        help="list installed tasks and metapackages")
     parser.add_argument("--remove-independent", action="store_true", dest="independent",
                         help="caution: remove packages not in metapackages or tasks")
-    parser.add_argument("-s", "--show", action="store_true", dest="show",
-                        help="show task and/or metapackage packages installed, available, and overlapping.")
+    parser.add_argument("-l", "--list", action="store_true", dest="list",
+                        help="list installed tasks and metapackages")
     parser.add_argument("-a", "--available", action="store_true", dest="available",
                         help="list all available tasks and metapackages")
+    parser.add_argument("-s", "--show", action="store_true", dest="show",
+                        help="show task and/or metapackage packages installed, available, and overlapping.")
     parser.add_argument("-R", "--report", action="store_true", dest="report",
                         help="default: report on installed tasks and metapackages")
     parser.add_argument("-o", "--report-orphans", action="store_true", dest="orphans",
                         help="report on orphan packages from not installed tasks or metapackages")
     parser.add_argument("task", nargs="?", action="store", type=str,
                         help="task or metapackage")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
+                            help="display version and exit")
     if ".py" in sys.argv[0]:
         parser.add_argument("--setup", action="store_true", dest="setup",
                             help="install to Linux destination path (default: " + install_path + ")")
