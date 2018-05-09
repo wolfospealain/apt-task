@@ -523,7 +523,7 @@ if __name__ == "__main__":
         apt.show(args.task)
     elif args.list:
         print("tasks installed:\n"+" ".join(apt.installed_tasks), "\n")
-        print("metapackages installed:\n"+" ".join(apt.installed_tasks), "\n")
+        print("metapackages installed:\n"+" ".join(apt.installed_metapackages), "\n")
     elif args.available:
         print("tasks available:\n"+" ".join(apt.tasks), "\n")
         print("metapackages available:\n"+" ".join(apt.metapackages), "\n")
