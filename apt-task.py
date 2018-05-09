@@ -195,7 +195,7 @@ class Apt:
         List metapackage packages, all available or installed only.
         """
         if installed_only:
-            installed = set()
+            installed = set([metapackage])
             for package in self.packages_db[metapackage].depends:
                 if package in self.packages_db:
                     if self.packages_db[package].installed:
@@ -250,17 +250,11 @@ class Apt:
         Return database of other tasks and overlapping packages.
         """
         packages = set(self.installed_packages(task))
+        other_tasks = set(self.installed_tasks) | set (self.installed_metapackages)
         overlaps = {}
-        for other_task in self.installed_tasks:
+        for other_task in other_tasks:
             if other_task != task:
-                overlaps[other_task] = set(self.tasks_db[other_task].installed) & packages
-        metapackage = self.equivalent_metapackage(task)
-        for other_metapackage in self.installed_metapackages:
-            if other_metapackage != metapackage:
-                if other_metapackage not in overlaps:
-                    overlaps[other_metapackage] = set()
-                overlaps[other_metapackage].update(
-                    set(self.metapackage_packages(other_metapackage, installed_only=True)) & packages)
+                overlaps[other_task] = set(self.installed_packages(other_task)) & packages
         return overlaps
 
     def installed_packages(self, task=None):
@@ -400,7 +394,6 @@ class Apt:
             if task not in skip:
                 removable = self.size(self.removable(task))
                 if (removable > 0 and orphans and task not in installed) or (not orphans and task in installed):
-                    packages = set()
                     if self._prefix + task in self.installed_metapackages:
                         metapackage = self._prefix + task
                         skip.update([metapackage])
@@ -410,20 +403,19 @@ class Apt:
                         percentage = self.task_status(task)[1]
                         symbol = ("<" if percentage < 100 and percentage >= 99.5 else " ")
                         print((symbol + str(round(percentage)) + "%").rjust(5), sep="", end="")
-                        packages.update(self.tasks_db[task].installed)
                     else:
                         print("   - ", end="")
                     if metapackage in self.metapackages:
                         percentage = self.metapackage_status(metapackage)[1]
                         symbol = ("<" if percentage < 100 and percentage >= 99.5 else " ")
                         print(" |", (symbol + str(round(percentage)) + "%").rjust(5), sep="", end="")
-                        packages.update(self.metapackage_packages(metapackage, installed_only=True))
                     else:
                         print(" |   - ", sep="", end="")
                     if task != metapackage:
                         print("  " + task + "/" + metapackage, end="")
                     else:
                         print("  " + task, sep="", end="")
+                    packages = self.installed_packages(task)
                     print("", len(packages), end="")
                     overlaps = self.overlapping(task)
                     overlapping_packages = 0
