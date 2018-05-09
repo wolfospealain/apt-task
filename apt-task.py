@@ -13,7 +13,7 @@ install_path = "/usr/local/bin"
 
 class Package:
     """
-    Stores package data and gets depends.
+    Stores package data: tasks, metapackages, depends, installation, size.
     """
 
     def __init__(self, name, sections=[], tasks=[], installed=False, metapackage=False, size=0):
@@ -23,6 +23,7 @@ class Package:
         self.installed = installed
         self.metapackage = metapackage
         self.size = size
+        self.depends = set()
 
     def in_task(self, search):
         for task in self.tasks:
@@ -30,27 +31,11 @@ class Package:
                 return True
         return False
 
-    def depends(self, installed_only=False):
-        apt_cache_depends_command = ["apt-cache", "depends", "--implicit", self.name]
-        packages = set()
-        if installed_only:
-            apt_cache_depends_command += ["--installed"]
-        try:
-            output = subprocess.check_output(apt_cache_depends_command).decode("utf-8").splitlines()
-        except:
-            print("Error running \"" + ' '.join(apt_cache_depends_command) + "\"\n")
-            exit(1)
-        for line in output[1:]:
-            if line[0] == " " and line[2] != " " and "<" not in line:
-                packages.update([line.split()[1].split(":")[0]])
-        return sorted(packages)
-
 
 class Task:
     """
     Stores task packages, installed and available.
     """
-
     def __init__(self, name, packages=set(), installed=set()):
         self.name = name
         self.packages = packages
@@ -65,9 +50,6 @@ class Apt:
         self.packages_db = self._apt_cache()
         self.metapackages = self._metapackages()
         self.installed_metapackages = self._metapackages(installed_only=True)
-        self.installed_metapackages_db = {}
-        for metapackage in self.metapackages:
-            self.installed_metapackages_db[metapackage] = Task(metapackage, self._metapackage_packages(metapackage), self._metapackage_packages(metapackage, installed_only=True))
         self.tasks = self._tasks()
         self.tasks_db = {}
         for task in self.tasks:
@@ -97,12 +79,20 @@ class Apt:
                 package = line.split()[1]
                 if package not in db:
                     db[package] = Package(package, installed=package in installed)
-            if line[:15] == "Installed-Size:":
+            elif line[:15] == "Installed-Size:":
                 db[package].size = int(line[16:])
-            if line[:5] == "Task:":
+            elif line[:5] == "Task:":
                 db[package].tasks.update(line[6:].split(", "))
-            if line[:8] == "Section:" and "metapackage" in line:
+            elif line[:8] == "Section:" and "metapackage" in line:
                 db[package].metapackage = True
+            elif line[:8] == "Depends:":
+                for depend in line[9:].split(", "):
+                    name = depend.split(" (")[0]
+                    db[package].depends.update([name])
+            elif line[:9] == "Suggests:":
+                db[package].depends.update(line[10:].split(", "))
+            elif line[:11] == "Recommends:":
+                db[package].depends.update(line[12:].split(", "))
         return db
 
     def _tasks(self, installed_only=False):
@@ -140,20 +130,6 @@ class Apt:
             kilobytes += self.packages_db[package].size
         return kilobytes
 
-    def outside_packages(self):
-        """
-        List installed packages not in a task or metapackage.
-        """
-        taskless = set(self._task_packages(None, installed_only=True))
-        depends = set()
-        for package in self.installed_metapackages:
-            depends.update(self.packages_db[package].depends())
-        metapackagesless = set()
-        for item in self.packages_db:
-            if self.packages_db[item].installed and item not in depends:
-                metapackagesless.update([item])
-        return sorted(taskless & metapackagesless)
-
     def task_status(self, task):
         """
         Return task status, percentage of packages installed, and list of any extra packages from equivalent metapackage.
@@ -171,8 +147,8 @@ class Apt:
         else:
             task_installed = None
         if metapackage_installed:
-            task_contents = set(self._task_packages(task, installed_only=True))
-            metapackage_contents = set(self.installed_metapackages_db[metapackage].installed)
+            task_contents = set(self.tasks_db[task].installed)
+            metapackage_contents = set(self.metapackage_packages(metapackage, installed_only=True))
             return [task_installed, percentage, metapackage_contents - task_contents]
         else:
             return [task_installed, percentage]
@@ -181,7 +157,7 @@ class Apt:
         """
         Return install status, percentage of packages installed, and list of any extra packages from equivalent task.
         """
-        depends = self.packages_db[metapackage].depends()
+        depends = self.metapackage_packages(metapackage)
         installed_depends = 0
         for package in depends:
             if package in self.packages_db:
@@ -196,7 +172,7 @@ class Apt:
             task = False
         if task:
             return [self.packages_db[metapackage].installed, percentage,
-                    set(self.tasks_db[task].installed) - set(self.installed_metapackages_db[metapackage].installed)]
+                    set(self.tasks_db[task].installed) - set(self.metapackage_packages(metapackage, installed_only=True))]
         else:
             return [self.packages_db[metapackage].installed, percentage]
 
@@ -206,16 +182,23 @@ class Apt:
         """
         metapackages = set()
         for item in self.packages_db:
-            if not installed_only or self.packages_db[item].installed:
-                if self.packages_db[item].metapackage:
-                    metapackages.update([item])
+            if (not installed_only or self.packages_db[item].installed) and self.packages_db[item].metapackage:
+                metapackages.update([item])
         return sorted(metapackages)
 
-    def _metapackage_packages(self, metapackage, installed_only=False):
+    def metapackage_packages(self, metapackage, installed_only=False):
         """
         List metapackage packages, all available or installed only.
         """
-        return self.packages_db[metapackage].depends(installed_only)
+        if installed_only:
+            installed = set()
+            for package in self.packages_db[metapackage].depends:
+                if package in self.packages_db:
+                    if self.packages_db[package].installed:
+                        installed.update([package])
+            return sorted(installed)
+        else:
+            return sorted(self.packages_db[metapackage].depends)
 
     def equivalent_metapackage(self, task):
         """
@@ -234,8 +217,7 @@ class Apt:
         """
         metapackage = self.equivalent_metapackage(task)
         installed_packages = self.installed_packages(task)
-
-        if metapackage in self.installed_metapackages and task in self.installed_tasks:
+        if metapackage in self.metapackages and task in self.tasks:
             metapackage_packages = self.task_status(task)[2]
             task_packages = self.metapackage_status(metapackage)[2]
             common_packages = sorted(set(installed_packages) - (set(task_packages) | set(metapackage_packages)))
@@ -267,22 +249,57 @@ class Apt:
             if other_metapackage != metapackage:
                 if other_metapackage not in overlaps:
                     overlaps[other_metapackage] = set()
-                overlaps[other_metapackage].update(set(self.installed_metapackages_db[other_metapackage].installed) & packages)
+                overlaps[other_metapackage].update(set(self.metapackage_packages(other_metapackage, installed_only=True)) & packages)
         return overlaps
 
-    def installed_packages(self, task):
+    def installed_packages(self, task=None):
         """
-        Return a list of installed packages for task and/or metapackage.
+        List of all installed packages or for task and/or metapackage.
         """
         installed = set()
-        if task in self.tasks:
-            installed.update(set(self.tasks_db[task].installed))
-        metapackage = self.equivalent_metapackage(task)
-        if metapackage in self.metapackages:
-            installed.update(set(self.installed_metapackages_db[metapackage].installed))
-            if metapackage in self.installed_metapackages:
-                installed.update([metapackage])
+        if task:
+            if task in self.tasks:
+                installed.update(set(self.tasks_db[task].installed))
+            metapackage = self.equivalent_metapackage(task)
+            if metapackage in self.metapackages:
+                installed.update(set(self.metapackage_packages(metapackage, installed_only=True)))
+                if metapackage in self.installed_metapackages:
+                    installed.update([metapackage])
+        else:
+            for package in self.packages_db:
+                if self.packages_db[package].installed:
+                    installed.update([package])
         return sorted(installed)
+
+    def installed_child_packages(self):
+        """
+        List installed child packages or installed tasks and/or metapackages.
+        """
+        children = set()
+        for metapackage in self.installed_metapackages:
+            children.update(self.metapackage_packages(metapackage, installed_only=True))
+        for task in self.installed_tasks:
+            children.update(self.tasks_db[task].installed)
+        return sorted(children)
+
+    def installed_orphan_packages(self):
+        """
+        List installed packages not in an installed task or metapackage.
+        """
+        children = set()
+        for metapackage in self.metapackages:
+            children.update(self.metapackage_packages(metapackage, installed_only=True))
+        for task in self.tasks:
+            children.update(self.tasks_db[task].installed)
+        children.difference_update(self.installed_child_packages())
+        return sorted(children)
+
+    def installed_independent_packages(self):
+        """
+        List installed packages not in any task or metapackage.
+        """
+        packages = (set(self.installed_packages()) - set(self.installed_child_packages())) - set(self.installed_orphan_packages())
+        return sorted(packages)
 
     def removable(self, task):
         """
@@ -320,14 +337,11 @@ class Apt:
         """
         packages = set()
         if task in self.tasks:
-            packages.update(self._task_packages(task))
+            packages.update(self.tasks_db[task].packages)
         if self._prefix+task in self.metapackages:
             task = self._prefix+task
         if task in self.metapackages:
-            if task in self.installed_metapackages_db:
-                packages.update(self.installed_metapackages_db[task].packages)
-            else:
-                packages.update(self.packages_db[task].depends(installed_only=True))
+            packages.update(self.metapackage_packages(task, installed_only=True))
             packages.update([task])
         else:
             return
@@ -351,59 +365,70 @@ class Apt:
             else:
                 return apt_command + " " + " ".join(sorted(packages))
 
-    def report(self):
+    def report(self, orphans=False):
         """
         Print on task/metapackage installation statistics.
         """
-        combined = set(self.installed_tasks) | set(self.installed_metapackages)
+        installed = set(self.installed_tasks) | set(self.installed_metapackages)
+        if orphans:
+            combined = (set(self.tasks) | set(self.metapackages)) - installed
+        else:
+            combined = installed
         skip = set()
-        print(" task  |  meta   name packages (% overlap) removable/installed")
-        print("       |  ")
-        total_size = 0
-        total_packages = 0
+        print(" task | meta  name packages (% overlap) removable/installed")
+        print("      |  ")
         for task in sorted(combined):
             if task not in skip:
-                installed_size = 0
-                installed_packages = 0
-                if self._prefix + task in self.installed_metapackages:
-                    metapackage = self._prefix + task
-                    skip.update([metapackage])
-                else:
-                    metapackage = task
-                if task in self.asks:
-                    print((str(round(self.task_status(task)[1]-.05,1)) + "%").rjust(6), sep="", end="")
-                    installed_size += self.size(set(self.tasks_db[task].installed))
-                    installed_packages += len(set(self.tasks_db[task].installed))
-                else:
-                    print("   -  ", end="")
-                if metapackage in self.metapackages:
-                    print(" | ", (str(round(self.metapackage_status(metapackage)[1]-.05,1)) + "%").rjust(6), sep="", end="")
-                    installed_size += self.size(set(self.installed_metapackages_db[metapackage].installed))
-                    installed_packages += len(set(self.installed_metapackages_db[metapackage].installed)) + 1
-                else:
-                    print(" |    -  ", sep="", end="")
-                if task != metapackage:
-                    print("  " + task + "/" + metapackage, end="")
-                else:
-                    print("  " + task, sep="", end="")
-                print("", installed_packages, end="")
-                overlaps = self.overlapping(task)
-                overlapping_packages = 0
-                biggest_overlap = ""
-                for other_task in sorted(overlaps):
-                    length = len(overlaps[other_task])
-                    if length > overlapping_packages:
-                        overlapping_packages = length
-                        biggest_overlap = other_task
-                if overlapping_packages > 0:
-                    print(" (" + str(round(overlapping_packages / len(self.installed_packages(task)) * 100,
-                                           1)) + "% in " + biggest_overlap + ")", end="")
-                print(" " + human(self.size(self.removable(task)) * 1024) + "/" + human(installed_size * 1024))
-                total_size += installed_size
-                total_packages += installed_packages
-        print("\n                 total:", total_packages, "packages", human(total_size * 1024))
-        outsiders = apt.outside_packages()
-        print("                 outside:", len(outsiders), "packages", human(self.size(outsiders) * 1024), "\n")
+                removable = self.size(self.removable(task))
+                if (removable > 0 and orphans and task not in installed) or (not orphans and task in installed):
+                    packages = set()
+                    if self._prefix + task in self.installed_metapackages:
+                        metapackage = self._prefix + task
+                        skip.update([metapackage])
+                    else:
+                        metapackage = task
+                    if task in self.tasks:
+                        percentage = self.task_status(task)[1]
+                        symbol = ("<" if percentage < 100 and percentage >= 99.5 else " ")
+                        print((symbol + str(round(percentage)) + "%").rjust(5), sep="", end="")
+                        packages.update(self.tasks_db[task].installed)
+                    else:
+                        print("   - ", end="")
+                    if metapackage in self.metapackages:
+                        percentage = self.metapackage_status(metapackage)[1]
+                        symbol = ("<" if percentage < 100 and percentage >= 99.5 else " ")
+                        print(" |", (symbol + str(round(percentage)) + "%").rjust(5), sep="", end="")
+                        packages.update(self.metapackage_packages(metapackage, installed_only=True))
+                    else:
+                        print(" |   - ", sep="", end="")
+                    if task != metapackage:
+                        print("  " + task + "/" + metapackage, end="")
+                    else:
+                        print("  " + task, sep="", end="")
+                    print("", len(packages), end="")
+                    overlaps = self.overlapping(task)
+                    overlapping_packages = 0
+                    biggest_overlap = ""
+                    for other_task in sorted(overlaps):
+                        length = len(overlaps[other_task])
+                        if length > overlapping_packages:
+                            overlapping_packages = length
+                            biggest_overlap = other_task
+                    if overlapping_packages > 0:
+                        print(" (" + str(round(overlapping_packages / len(self.installed_packages(task)) * 100)) + "% in " + biggest_overlap + ")", end="")
+                    print(" " + human(removable * 1024) + "/" + human(self.size(packages) * 1024))
+
+        installed = apt.installed_packages()
+        children = apt.installed_child_packages()
+        orphans = apt.installed_orphan_packages()
+        independent = apt.installed_independent_packages()
+        print()
+        print("              installed packages:", len(installed), "packages", human(self.size(installed) * 1024))
+        print()
+        print("              child packages:", len(children), "packages", human(self.size(children) * 1024))
+        print("              orphan packages:", len(orphans), "packages", human(self.size(orphans) * 1024))
+        print("              independent packages:", len(independent), "packages", human(self.size(independent) * 1024))
+        print()
 
 
 def human(num, suffix='B'):
@@ -449,7 +474,7 @@ def parse_command_line():
                         help="safely remove task and/or metapackage packages")
     parser.add_argument("-l", "--list", action="store_true", dest="list",
                         help="list installed tasks and metapackages")
-    parser.add_argument("--outsiders", action="store_true", dest="outsiders",
+    parser.add_argument("--remove-independent", action="store_true", dest="independent",
                         help="caution: remove packages not in metapackages or tasks")
     parser.add_argument("-s", "--show", action="store_true", dest="show",
                         help="show task and/or metapackage packages installed, available, and overlapping.")
@@ -457,6 +482,8 @@ def parse_command_line():
                         help="list all available tasks and metapackages")
     parser.add_argument("-R", "--report", action="store_true", dest="report",
                         help="default: report on installed tasks and metapackages")
+    parser.add_argument("-o", "--report-orphans", action="store_true", dest="orphans",
+                        help="report on orphan packages from not installed tasks or metapackages")
     parser.add_argument("task", nargs="?", action="store", type=str,
                         help="task or metapackage")
     if ".py" in sys.argv[0]:
@@ -486,7 +513,7 @@ if __name__ == "__main__":
         print(apt.install(args.task)+"\n")
     elif args.remove:
         print(apt.remove(args.task) + "\n")
-    elif args.outsiders:
+    elif args.independent:
         print(apt.remove(None) + "\n")
     elif args.show:
         apt.show(args.task)
@@ -496,5 +523,9 @@ if __name__ == "__main__":
     elif args.available:
         print("tasks available: ", " ".join(apt.tasks))
         print("metapackages available: ", " ".join(apt.metapackages), "\n")
+    elif args.orphans:
+        print("orphan packages:\n")
+        apt.report(orphans=True)
     else:
+        print("installed tasks/metapackages:\n")
         apt.report()
