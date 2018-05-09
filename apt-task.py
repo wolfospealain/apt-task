@@ -455,10 +455,12 @@ def human(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def install(target=install_path):
+def install(target):
     """
     Install to target path and set executable permission.
     """
+    if not target:
+        target = install_path
     if os.path.isdir(target):
         try:
             subprocess.check_output(["cp", "apt-task.py", target + "/apt-task"]).decode("utf-8")
