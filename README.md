@@ -13,8 +13,8 @@ Importantly, Apt-Task only generates the command text and will not make any chan
 ## Usage
 
 ```
-usage: apt-task.py [-h] [-v] [-i] [-r] [-l] [--remove-independent] [-s] [-a]
-                   [-R] [-o] [--setup]
+usage: apt-task.py [-h] [-i] [-r] [--remove-independent] [-l] [-a] [-s] [-R]
+                   [-o] [-v] [--setup]
                    [task]
 
 apt-task.py version 1.0. Safely remove and install Ubuntu Linux task and/or
@@ -25,18 +25,18 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -v, --version         display version and exit
   -i, --install         install/complete installation of task and/or
                         metapackage packages
   -r, --remove          safely remove task and/or metapackage packages
-  -l, --list            list installed tasks and metapackages
   --remove-independent  caution: remove packages not in metapackages or tasks
+  -l, --list            list installed tasks and metapackages
+  -a, --available       list all available tasks and metapackages
   -s, --show            show task and/or metapackage packages installed,
                         available, and overlapping.
-  -a, --available       list all available tasks and metapackages
   -R, --report          default: report on installed tasks and metapackages
   -o, --report-orphans  report on orphan packages from not installed tasks or
                         metapackages
+  -v, --version         display version and exit
   --setup               install to Linux destination path (default:
                         /usr/local/bin)
 ```
