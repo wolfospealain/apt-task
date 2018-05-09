@@ -146,7 +146,7 @@ class Apt:
             task_installed = False
         else:
             task_installed = None
-        if metapackage_installed:
+        if metapackage in self.metapackages:
             task_contents = set(self.tasks_db[task].installed)
             metapackage_contents = set(self.metapackage_packages(metapackage, installed_only=True))
             return [task_installed, percentage, metapackage_contents - task_contents]
@@ -217,23 +217,27 @@ class Apt:
         """
         metapackage = self.equivalent_metapackage(task)
         installed_packages = self.installed_packages(task)
+        task_label = ("task orphans installed" if task not in self.installed_tasks else "task installed")
+        metapackage_label = ("metapackage orphans installed" if metapackage not in self.installed_metapackages else "metapackages installed")
+        label = ("orphans installed" if task not in self.installed_tasks and metapackage not in self.installed_metapackages else "installed")
         if metapackage in self.metapackages and task in self.tasks:
-            metapackage_packages = self.task_status(task)[2]
+            common_packages = set(installed_packages)
             task_packages = self.metapackage_status(metapackage)[2]
-            common_packages = sorted(set(installed_packages) - (set(task_packages) | set(metapackage_packages)))
-            print(task, "task installed:", " ".join(task_packages), "\n")
-            print(metapackage, "metapackage installed:", " ".join(metapackage_packages), "\n")
-            print("common installed:", " ".join(common_packages), "\n")
+            print(task, task_label + ":\n" + " ".join(task_packages), "\n")
+            common_packages.difference_update(task_packages)
+            metapackage_packages = self.task_status(task)[2]
+            print(metapackage, metapackage_label + ":\n" + " ".join(metapackage_packages), "\n")
+            common_packages.difference_update(metapackage_packages)
+            print(task, "task/metapackage " + label + ":\n" + " ".join(common_packages), "\n")
         else:
-            print(task, "installed:", " ".join(installed_packages), "\n")
-        print("removable:", " ".join(self.removable(task)), "\n")
-        print("available:", " ".join(self.installable(task)), "\n")
+            print(task, label + ":\n" + " ".join(installed_packages), "\n")
+        print("removable:\n" + " ".join(self.removable(task)), "\n")
+        print("available:\n" + " ".join(self.installable(task)), "\n")
         overlaps = self.overlapping(task)
-        print("overlapping:\n")
         for other_task in sorted(overlaps):
             overlapping = sorted(overlaps[other_task])
             if overlapping:
-                print(other_task + ":", " ".join(overlapping))
+                print("overlapping", other_task + ":\n" + " ".join(overlapping) + "\n")
 
     def overlapping(self, task):
         """
@@ -306,7 +310,7 @@ class Apt:
         Return packages safely removable from task and/or metapackage without disturbing other tasks and metapackages.
         """
         if not task:
-            return sorted(set(self.outside_packages()))
+            return sorted(set(self.installed_independent_packages()))
         else:
             packages = set(self.installed_packages(task))
             overlaps = self.overlapping(task)
@@ -518,11 +522,11 @@ if __name__ == "__main__":
     elif args.show:
         apt.show(args.task)
     elif args.list:
-        print("tasks installed:", " ".join(apt.installed_tasks))
-        print("metapackages installed:", " ".join(apt.installed_tasks), "\n")
+        print("tasks installed:\n"+" ".join(apt.installed_tasks), "\n")
+        print("metapackages installed:\n"+" ".join(apt.installed_tasks), "\n")
     elif args.available:
-        print("tasks available: ", " ".join(apt.tasks))
-        print("metapackages available: ", " ".join(apt.metapackages), "\n")
+        print("tasks available:\n"+" ".join(apt.tasks), "\n")
+        print("metapackages available:\n"+" ".join(apt.metapackages), "\n")
     elif args.orphans:
         print("orphan packages:\n")
         apt.report(orphans=True)
