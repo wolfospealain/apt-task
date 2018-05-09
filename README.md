@@ -13,28 +13,32 @@ Importantly, Apt-Task only generates the command text and will not make any chan
 ## Usage
 
 ```
-usage: apt-task [-h] [--setup] [-V] [-i] [-r] [-l] [--outsiders] [-s] [-a] [-R]
-                [task]
+usage: apt-task.py [-h] [-v] [-i] [-r] [-l] [--remove-independent] [-s] [-a]
+                   [-R] [-o] [--setup]
+                   [task]
 
-apt-task version 1.0. Safely remove and install Ubuntu Linux task and/or
+apt-task.py version 1.0. Safely remove and install Ubuntu Linux task and/or
 metapackage packages.
 
 positional arguments:
-  task             task or metapackage
+  task                  task or metapackage
 
 optional arguments:
-  -h, --help       show this help message and exit
-  --setup          install to Linux destination path (default: /usr/local/bin)
-  -v, --version    display version and exit
-  -i, --install    install/complete installation of task and/or metapackage
-                   packages
-  -r, --remove     safely remove task and/or metapackage packages
-  -l, --list       list installed tasks and metapackages
-  --outsiders      caution: remove packages not in metapackages or tasks
-  -s, --show       show task and/or metapackage packages installed, available,
-                   and overlapping.
-  -a, --available  list all available tasks and metapackages
-  -R, --report     default: report on installed tasks and metapackages
+  -h, --help            show this help message and exit
+  -v, --version         display version and exit
+  -i, --install         install/complete installation of task and/or
+                        metapackage packages
+  -r, --remove          safely remove task and/or metapackage packages
+  -l, --list            list installed tasks and metapackages
+  --remove-independent  caution: remove packages not in metapackages or tasks
+  -s, --show            show task and/or metapackage packages installed,
+                        available, and overlapping.
+  -a, --available       list all available tasks and metapackages
+  -R, --report          default: report on installed tasks and metapackages
+  -o, --report-orphans  report on orphan packages from not installed tasks or
+                        metapackages
+  --setup               install to Linux destination path (default:
+                        /usr/local/bin)
 ```
 
 ## Use Cases
