@@ -36,6 +36,7 @@ class Task:
     """
     Stores task packages, installed and available.
     """
+
     def __init__(self, name, packages=set(), installed=set()):
         self.name = name
         self.packages = packages
@@ -43,7 +44,6 @@ class Task:
 
 
 class Apt:
-
     _prefix = "ubuntu-"
 
     def __init__(self):
@@ -53,17 +53,20 @@ class Apt:
         self.tasks = self._tasks()
         self.tasks_db = {}
         for task in self.tasks:
-                self.tasks_db[task] = Task(task, self._task_packages(task), self._task_packages(task, installed_only=True))
+            self.tasks_db[task] = Task(task, self._task_packages(task), self._task_packages(task, installed_only=True))
         self.installed_tasks = self._tasks(installed_only=True)
 
     def _apt_cache(self):
         """
         Return package database parsed from apt-cache results.
         """
-        dpkg_command = ["dpkg-query", "-W", "-f", "${Package} "]
+        dpkg_command = ["dpkg-query", "-W", "-f", "${Package} ${Status}\n"]
         apt_cache_command = ["apt-cache", "show", "."]
         try:
-            installed = sorted(list(set(subprocess.check_output(dpkg_command).decode("utf-8").split())))
+            installed = set()
+            for line in subprocess.check_output(dpkg_command).decode("utf-8").split("\n"):
+                if line and line.split()[3] == "installed":
+                    installed.update([line.split()[0]])
         except:
             print("Error running \"" + ' '.join(dpkg_command) + "\"\n")
             exit(1)
@@ -166,13 +169,14 @@ class Apt:
         percentage = installed_depends / len(depends) * 100
         if metapackage in self.tasks:
             task = metapackage
-        elif metapackage[:7]==self._prefix and metapackage[7:] in self.tasks:
+        elif metapackage[:7] == self._prefix and metapackage[7:] in self.tasks:
             task = metapackage[7:]
         else:
             task = False
         if task:
             return [self.packages_db[metapackage].installed, percentage,
-                    set(self.tasks_db[task].installed) - set(self.metapackage_packages(metapackage, installed_only=True))]
+                    set(self.tasks_db[task].installed) - set(
+                        self.metapackage_packages(metapackage, installed_only=True))]
         else:
             return [self.packages_db[metapackage].installed, percentage]
 
@@ -204,8 +208,8 @@ class Apt:
         """
         Return metapackage equivalent name for task.
         """
-        if self._prefix+task in self.metapackages:
-            return self._prefix+task
+        if self._prefix + task in self.metapackages:
+            return self._prefix + task
         elif task in self.metapackages:
             return task
         else:
@@ -218,8 +222,10 @@ class Apt:
         metapackage = self.equivalent_metapackage(task)
         installed_packages = self.installed_packages(task)
         task_label = ("task orphans installed" if task not in self.installed_tasks else "task installed")
-        metapackage_label = ("metapackage orphans installed" if metapackage not in self.installed_metapackages else "metapackages installed")
-        label = ("orphans installed" if task not in self.installed_tasks and metapackage not in self.installed_metapackages else "installed")
+        metapackage_label = (
+        "metapackage orphans installed" if metapackage not in self.installed_metapackages else "metapackages installed")
+        label = (
+        "orphans installed" if task not in self.installed_tasks and metapackage not in self.installed_metapackages else "installed")
         if metapackage in self.metapackages and task in self.tasks:
             common_packages = set(installed_packages)
             task_packages = self.metapackage_status(metapackage)[2]
@@ -246,14 +252,15 @@ class Apt:
         packages = set(self.installed_packages(task))
         overlaps = {}
         for other_task in self.installed_tasks:
-                if other_task != task:
-                    overlaps[other_task] = set(self.tasks_db[other_task].installed) & packages
+            if other_task != task:
+                overlaps[other_task] = set(self.tasks_db[other_task].installed) & packages
         metapackage = self.equivalent_metapackage(task)
         for other_metapackage in self.installed_metapackages:
             if other_metapackage != metapackage:
                 if other_metapackage not in overlaps:
                     overlaps[other_metapackage] = set()
-                overlaps[other_metapackage].update(set(self.metapackage_packages(other_metapackage, installed_only=True)) & packages)
+                overlaps[other_metapackage].update(
+                    set(self.metapackage_packages(other_metapackage, installed_only=True)) & packages)
         return overlaps
 
     def installed_packages(self, task=None):
@@ -302,7 +309,8 @@ class Apt:
         """
         List installed packages not in any task or metapackage.
         """
-        packages = (set(self.installed_packages()) - set(self.installed_child_packages())) - set(self.installed_orphan_packages())
+        packages = (set(self.installed_packages()) - set(self.installed_child_packages())) - set(
+            self.installed_orphan_packages())
         return sorted(packages)
 
     def removable(self, task):
@@ -310,7 +318,14 @@ class Apt:
         Return packages safely removable from task and/or metapackage without disturbing other tasks and metapackages.
         """
         if not task:
-            return sorted(set(self.installed_independent_packages()))
+            system_essential_prefix = "linux-"
+            packages = set()
+            for package in set(self.installed_independent_packages()):
+                if package[:6] == system_essential_prefix:
+                    packages.update([package + "+"])
+                else:
+                    packages.update([package])
+            return sorted(packages)
         else:
             packages = set(self.installed_packages(task))
             overlaps = self.overlapping(task)
@@ -342,8 +357,8 @@ class Apt:
         packages = set()
         if task in self.tasks:
             packages.update(self.tasks_db[task].packages)
-        if self._prefix+task in self.metapackages:
-            task = self._prefix+task
+        if self._prefix + task in self.metapackages:
+            task = self._prefix + task
         if task in self.metapackages:
             packages.update(self.metapackage_packages(task, installed_only=True))
             packages.update([task])
@@ -419,7 +434,8 @@ class Apt:
                             overlapping_packages = length
                             biggest_overlap = other_task
                     if overlapping_packages > 0:
-                        print(" (" + str(round(overlapping_packages / len(self.installed_packages(task)) * 100)) + "% in " + biggest_overlap + ")", end="")
+                        print(" (" + str(round(overlapping_packages / len(
+                            self.installed_packages(task)) * 100)) + "% in " + biggest_overlap + ")", end="")
                     print(" " + human(removable * 1024) + "/" + human(self.size(packages) * 1024))
 
         installed = apt.installed_packages()
@@ -440,7 +456,7 @@ def human(num, suffix='B'):
     Fred Cirera, 2007
     https://web.archive.org/web/20111010015624/http://blogmag.net/blog/read/38/Print_human_readable_file_size
     """
-    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
@@ -474,8 +490,10 @@ def parse_command_line():
                         help="install/complete installation of task and/or metapackage packages")
     parser.add_argument("-r", "--remove", action="store_true", dest="remove",
                         help="safely remove task and/or metapackage packages")
-    parser.add_argument("--remove-independent", action="store_true", dest="independent",
+    parser.add_argument("--remove-independents", action="store_true", dest="independent",
                         help="caution: remove packages not in metapackages or tasks")
+    parser.add_argument("--remove-configurations", action="store_true", dest="purge",
+                        help="delete configuration files left from removed packages")
     parser.add_argument("-l", "--list", action="store_true", dest="list",
                         help="list installed tasks and metapackages")
     parser.add_argument("-a", "--available", action="store_true", dest="available",
@@ -489,7 +507,7 @@ def parse_command_line():
     parser.add_argument("task", nargs="?", action="store", type=str,
                         help="task or metapackage")
     parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
-                            help="display version and exit")
+                        help="display version and exit")
     if ".py" in sys.argv[0]:
         parser.add_argument("--setup", action="store_true", dest="setup",
                             help="install to Linux destination path (default: " + install_path + ")")
@@ -507,14 +525,17 @@ if __name__ == "__main__":
         print(args.__dict__)
         print("\nMissing task parameter.\n")
         exit(2)
+    if args.purge:
+        print("\nsudo apt purge $(dpkg --get-selections | grep deinstall | cut -f 1)\n")
+        exit(0)
     print("\nParsing apt-cache ... ", end="")
     apt = Apt()
     print("\r                     \r", end="")
     if args.task and args.task not in apt.tasks and args.task not in apt.metapackages:
         print("Unknown task.\n")
-        exit(1)
+        exit(3)
     if args.install:
-        print(apt.install(args.task)+"\n")
+        print(apt.install(args.task) + "\n")
     elif args.remove:
         print(apt.remove(args.task) + "\n")
     elif args.independent:
@@ -522,11 +543,11 @@ if __name__ == "__main__":
     elif args.show:
         apt.show(args.task)
     elif args.list:
-        print("tasks installed:\n"+" ".join(apt.installed_tasks), "\n")
-        print("metapackages installed:\n"+" ".join(apt.installed_metapackages), "\n")
+        print("tasks installed:\n" + " ".join(apt.installed_tasks), "\n")
+        print("metapackages installed:\n" + " ".join(apt.installed_metapackages), "\n")
     elif args.available:
-        print("tasks available:\n"+" ".join(apt.tasks), "\n")
-        print("metapackages available:\n"+" ".join(apt.metapackages), "\n")
+        print("tasks available:\n" + " ".join(apt.tasks), "\n")
+        print("metapackages available:\n" + " ".join(apt.metapackages), "\n")
     elif args.orphans:
         print("tasks/metapackages orphans:\n")
         apt.report(orphans=True)
