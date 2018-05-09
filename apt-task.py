@@ -528,7 +528,7 @@ if __name__ == "__main__":
         print("tasks available:\n"+" ".join(apt.tasks), "\n")
         print("metapackages available:\n"+" ".join(apt.metapackages), "\n")
     elif args.orphans:
-        print("orphan packages:\n")
+        print("tasks/metapackages orphans:\n")
         apt.report(orphans=True)
     else:
         print("installed tasks/metapackages:\n")
