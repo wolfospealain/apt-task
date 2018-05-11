@@ -13,7 +13,7 @@ Importantly, Apt-Task only generates the command text and will not make any chan
 ## Usage
 
 ```
-usage: apt-task.py [-h] [-i] [-r] [--remove-independents]
+usage: apt-task.py [-h] [-i] [-r] [--remove-outsiders]
                    [--remove-configurations] [-l] [-a] [-s] [-R] [-o] [-v]
                    [--setup]
                    [task]
@@ -29,17 +29,16 @@ optional arguments:
   -i, --install         install/complete installation of task and/or
                         metapackage packages
   -r, --remove          safely remove task and/or metapackage packages
-  --remove-independents
-                        caution: remove packages not in metapackages or tasks
+  --remove-outsiders    caution: remove orphan and independent packages
   --remove-configurations
-                        remove configuration files left from removed packages
+                        delete configuration files left from removed packages
   -l, --list            list installed tasks and metapackages
   -a, --available       list all available tasks and metapackages
   -s, --show            show task and/or metapackage packages installed,
                         available, and overlapping.
   -R, --report          default: report on installed tasks and metapackages
-  -o, --report-orphans  report on orphan packages from not installed tasks or
-                        metapackages
+  -o, --report-orphans  report on orphan packages from tasks or metapackages
+                        not installed
   -v, --version         display version and exit
   --setup               install to Linux destination path (default:
                         /usr/local/bin)
@@ -61,9 +60,9 @@ Check orphan files using ```apt-task --report-orphans```.
 ### Factory installation only:
 Remove all but required metapackages and tasks, then remove remaining packages outside any installed metapackages or tasks (danger awaits):
 
-```apt-task --remove-independents```
+```apt-task --remove-outsiders```
 
-For safety packages, beginning with "linux-" are marked for to be installed instead of removed. Delete the trailing + to remove.
+For safety packages, beginning with "linux-" are marked for to be installed instead of removed. Delete the trailing + to override and remove.
 
 ### Purge unused configuration files:
 Delete configuration files left from previously removed packages (equivalent to using ```apt purge``` instead of ```apt remove``` at the time).
