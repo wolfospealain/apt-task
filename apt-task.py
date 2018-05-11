@@ -253,7 +253,7 @@ class Apt:
         other_tasks = set(self.installed_tasks) | set (self.installed_metapackages)
         overlaps = {}
         for other_task in other_tasks:
-            if other_task != task:
+            if other_task != task and other_task != self.equivalent_metapackage(task):
                 overlaps[other_task] = set(self.installed_packages(other_task)) & packages
         return overlaps
 
@@ -314,7 +314,7 @@ class Apt:
         if not task:
             system_essential_prefix = "linux-"
             packages = set()
-            for package in set(self.installed_independent_packages()):
+            for package in (set(self.installed_independent_packages()) | set(self.installed_orphan_packages())):
                 if package[:6] == system_essential_prefix:
                     packages.update([package + "+"])
                 else:
@@ -484,8 +484,8 @@ def parse_command_line():
                         help="install/complete installation of task and/or metapackage packages")
     parser.add_argument("-r", "--remove", action="store_true", dest="remove",
                         help="safely remove task and/or metapackage packages")
-    parser.add_argument("--remove-independents", action="store_true", dest="independent",
-                        help="caution: remove packages not in metapackages or tasks")
+    parser.add_argument("--remove-outsiders", action="store_true", dest="independent",
+                        help="caution: remove orphan and independent packages")
     parser.add_argument("--remove-configurations", action="store_true", dest="purge",
                         help="delete configuration files left from removed packages")
     parser.add_argument("-l", "--list", action="store_true", dest="list",
@@ -497,7 +497,7 @@ def parse_command_line():
     parser.add_argument("-R", "--report", action="store_true", dest="report",
                         help="default: report on installed tasks and metapackages")
     parser.add_argument("-o", "--report-orphans", action="store_true", dest="orphans",
-                        help="report on orphan packages from not installed tasks or metapackages")
+                        help="report on orphan packages from tasks or metapackages not installed")
     parser.add_argument("task", nargs="?", action="store", type=str,
                         help="task or metapackage")
     parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version,
