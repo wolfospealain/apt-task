@@ -195,7 +195,9 @@ class Apt:
         List metapackage packages, all available or installed only.
         """
         if installed_only:
-            installed = set([metapackage])
+            installed = set()
+            if self.packages_db[metapackage].installed:
+                installed.update([metapackage])
             for package in self.packages_db[metapackage].depends:
                 if package in self.packages_db:
                     if self.packages_db[package].installed:
