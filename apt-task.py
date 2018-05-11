@@ -380,6 +380,12 @@ class Apt:
             else:
                 return apt_command + " " + " ".join(sorted(packages))
 
+    def symbol(self, value):
+        """
+        Returns a > or < symbol for rounded values not quite 100 or 0.
+        """
+        return ("<" if value < 100 and value >= 99.5 else (">" if value > 0 and value < 0.5 else " "))
+
     def report(self, orphans=False):
         """
         Print on task/metapackage installation statistics.
@@ -403,14 +409,12 @@ class Apt:
                         metapackage = task
                     if task in self.tasks:
                         percentage = self.task_status(task)[1]
-                        symbol = ("<" if percentage < 100 and percentage >= 99.5 else " ")
-                        print((symbol + str(round(percentage)) + "%").rjust(5), sep="", end="")
+                        print((self.symbol(percentage) + str(round(percentage)) + "%").rjust(5), sep="", end="")
                     else:
                         print("   - ", end="")
                     if metapackage in self.metapackages:
                         percentage = self.metapackage_status(metapackage)[1]
-                        symbol = ("<" if percentage < 100 and percentage >= 99.5 else " ")
-                        print(" |", (symbol + str(round(percentage)) + "%").rjust(5), sep="", end="")
+                        print(" |", (self.symbol(percentage) + str(round(percentage)) + "%").rjust(5), sep="", end="")
                     else:
                         print(" |   - ", sep="", end="")
                     if task != metapackage:
